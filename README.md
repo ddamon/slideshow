@@ -1,3 +1,6 @@
+## 本轮播图fork自YC大神：
+https://github.com/yangchong211/YCBanner
+
 ## YCBanner轮播图
 - 主要引导界面滑动导航 + 大于1页时无限轮播 + 自定义指示器
 - 项目地址：https://github.com/yangchong211/YCBanner

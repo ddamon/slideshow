@@ -26,16 +26,19 @@ import android.widget.Scroller;
 import com.yc.cn.ycbannerlib.LibUtils;
 import com.yc.cn.ycbannerlib.R;
 import com.yc.cn.ycbannerlib.banner.adapter.AbsLoopPagerAdapter;
+import com.yc.cn.ycbannerlib.banner.hintview.ColorPointHintView;
 import com.yc.cn.ycbannerlib.banner.hintview.TextHintView;
 import com.yc.cn.ycbannerlib.banner.inter.BaseHintView;
-import com.yc.cn.ycbannerlib.banner.hintview.ColorPointHintView;
 import com.yc.cn.ycbannerlib.banner.inter.HintViewDelegate;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
-import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -64,11 +67,11 @@ public class BannerView extends RelativeLayout {
     }
 
 
-	private ViewPager mViewPager;
-	private PagerAdapter mAdapter;
+    private ViewPager mViewPager;
+    private PagerAdapter mAdapter;
     private GestureDetector mGestureDetector;
 
-	private long mRecentTouchTime;
+    private long mRecentTouchTime;
     /**
      * 指示器类型
      */
@@ -76,39 +79,50 @@ public class BannerView extends RelativeLayout {
     /**
      * 播放延迟
      */
-	private int delay;
+    private int delay;
     /**
      * hint位置
      */
-	private int gravity;
+    private int gravity;
     /**
      * hint颜色
      */
-	private int color;
+    private int color;
     /**
      * hint透明度
      */
-	private int alpha;
-	private int paddingLeft;
-	private int paddingTop;
-	private int paddingRight;
-	private int paddingBottom;
-	private View mHintView;
-	private Timer timer;
+    private int alpha;
+    private int paddingLeft;
+    private int paddingTop;
+    private int paddingRight;
+    private int paddingBottom;
+    private View mHintView;
+    private ScheduledExecutorService executorService;
 
+//    多线程并行处理定时任务时，Timer运行多个TimeTask时，只要其中之一没有捕获抛出的异常，其它任务便会自动终止运行，使用ScheduledExecutorService则没有这个问题。
+//
+//    //org.apache.commons.lang3.concurrent.BasicThreadFactory
+//    ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(1,
+//            new BasicThreadFactory.Builder().namingPattern("example-schedule-pool-%d").daemon(true).build());
+//    executorService.scheduleAtFixedRate(new Runnable() {
+//        @Override
+//        public void run() {
+//            //do something
+//        }
+//    },initialDelay,period, TimeUnit.HOURS);
 
     private HintViewDelegate mHintViewDelegate = new HintViewDelegate() {
         @Override
-        public void setCurrentPosition(int position,BaseHintView hintView) {
-            if(hintView!=null){
+        public void setCurrentPosition(int position, BaseHintView hintView) {
+            if (hintView != null) {
                 hintView.setCurrent(position);
             }
         }
 
         @Override
-        public void initView(int length, int gravity,BaseHintView hintView) {
-            if (hintView!=null){
-                hintView.initView(length,gravity);
+        public void initView(int length, int gravity, BaseHintView hintView) {
+            if (hintView != null) {
+                hintView.initView(length, gravity);
             }
         }
     };
@@ -121,82 +135,85 @@ public class BannerView extends RelativeLayout {
      * 继承View，完全自定义控件TextView，Button，EditText
      * 继承ViewGroup，完全自定义控件LinearLayout，ScrollView
      * 让外界在代码中new对象时调用
-     * @param context           上下文
+     *
+     * @param context 上下文
      */
-	public BannerView(Context context){
-		this(context,null);
-	}
+    public BannerView(Context context) {
+        this(context, null);
+    }
 
     /**
      * 在布局文字中配置控件时调用
-     * @param context           上下文
-     * @param attrs             属性
+     *
+     * @param context 上下文
+     * @param attrs   属性
      */
-	public BannerView(Context context, AttributeSet attrs) {
-		this(context, attrs, 0);
-	}
+    public BannerView(Context context, AttributeSet attrs) {
+        this(context, attrs, 0);
+    }
 
     /**
      * 使用样式时调用
-     * @param context           上下文
-     * @param attrs             属性
-     * @param defStyle          样式
+     *
+     * @param context  上下文
+     * @param attrs    属性
+     * @param defStyle 样式
      */
-	public BannerView(Context context, AttributeSet attrs, int defStyle) {
-		super(context, attrs, defStyle);
-		initView(attrs);
-	}
+    public BannerView(Context context, AttributeSet attrs, int defStyle) {
+        super(context, attrs, defStyle);
+        initView(attrs);
+    }
 
-	/**
-	 * 读取提示形式  和   提示位置   和    播放延迟
-	 */
-	private void initView(AttributeSet attrs){
+    /**
+     * 读取提示形式  和   提示位置   和    播放延迟
+     */
+    private void initView(AttributeSet attrs) {
         //这里要做移除，有时在使用中没有手动销毁，所以初始化时要remove
-		if(mViewPager!=null){
-			removeView(mViewPager);
-		}
+        if (mViewPager != null) {
+            removeView(mViewPager);
+        }
 
-		TypedArray type = getContext().obtainStyledAttributes(attrs, R.styleable.BannerView);
+        TypedArray type = getContext().obtainStyledAttributes(attrs, R.styleable.BannerView);
         hintMode = type.getInteger(R.styleable.BannerView_hint_mode, 0);
         gravity = type.getInteger(R.styleable.BannerView_hint_gravity, 1);
-		delay = type.getInt(R.styleable.BannerView_play_delay, 0);
-		color = type.getColor(R.styleable.BannerView_hint_color, Color.BLACK);
-		alpha = type.getInt(R.styleable.BannerView_hint_alpha, 0);
-		paddingLeft = (int) type.getDimension(R.styleable.BannerView_hint_paddingLeft, 0);
-		paddingRight = (int) type.getDimension(R.styleable.BannerView_hint_paddingRight, 0);
-		paddingTop = (int) type.getDimension(R.styleable.BannerView_hint_paddingTop, 0);
-		paddingBottom = (int) type.getDimension(R.styleable.BannerView_hint_paddingBottom
-                , LibUtils.dip2px(getContext(),4));
+        delay = type.getInt(R.styleable.BannerView_play_delay, 0);
+        color = type.getColor(R.styleable.BannerView_hint_color, Color.BLACK);
+        alpha = type.getInt(R.styleable.BannerView_hint_alpha, 0);
+        paddingLeft = (int) type.getDimension(R.styleable.BannerView_hint_paddingLeft, 0);
+        paddingRight = (int) type.getDimension(R.styleable.BannerView_hint_paddingRight, 0);
+        paddingTop = (int) type.getDimension(R.styleable.BannerView_hint_paddingTop, 0);
+        paddingBottom = (int) type.getDimension(R.styleable.BannerView_hint_paddingBottom
+                , LibUtils.dip2px(getContext(), 4));
 
-		mViewPager = new ViewPager(getContext());
-		mViewPager.setId(R.id.banner_inner);
-		mViewPager.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT
+        mViewPager = new ViewPager(getContext());
+        mViewPager.setId(R.id.banner_inner);
+        mViewPager.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT
                 , LayoutParams.MATCH_PARENT));
-		addView(mViewPager);
-		type.recycle();
-		if(hintMode==HintMode.COLOR_POINT_HINT){
+        addView(mViewPager);
+        type.recycle();
+        if (hintMode == HintMode.COLOR_POINT_HINT) {
             initHint(new ColorPointHintView(getContext(), Color.parseColor("#E3AC42")
                     , Color.parseColor("#88ffffff")));
-        }else if(hintMode==HintMode.TEXT_HINT){
+        } else if (hintMode == HintMode.TEXT_HINT) {
             initHint(new TextHintView(getContext()));
-        }else {
+        } else {
             initHint(new ColorPointHintView(getContext(), Color.parseColor("#E3AC42")
                     , Color.parseColor("#88ffffff")));
         }
         initGestureDetector();
-	}
+    }
 
 
     private void initGestureDetector() {
         //手势处理
-        mGestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener(){
+        mGestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
-                if (mOnItemClickListener!=null){
-                    if (mAdapter instanceof AbsLoopPagerAdapter){
+                if (mOnItemClickListener != null) {
+                    if (mAdapter instanceof AbsLoopPagerAdapter) {
                         int i = mViewPager.getCurrentItem() % ((AbsLoopPagerAdapter) mAdapter).getRealCount();
                         mOnItemClickListener.onItemClick(i);
-                    }else {
+                    } else {
                         mOnItemClickListener.onItemClick(mViewPager.getCurrentItem());
                     }
                 }
@@ -210,7 +227,7 @@ public class BannerView extends RelativeLayout {
      * 计算所有ChildView的宽度和高度 然后根据ChildView的计算结果，设置自己的宽和高
      * 11月18日，当不设置轮播图布局具体宽高的时候，则轮播图全屏展示
      * 需求：1.当即使不设置具体宽高值，就展现默认值宽高，默认宽是MATCH_PARENT，高是200dp
-     *      2.能够根据图片自动展示轮播图宽高。这个认为没必要
+     * 2.能够根据图片自动展示轮播图宽高。这个认为没必要
      */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -223,7 +240,7 @@ public class BannerView extends RelativeLayout {
         measureChildren(widthMeasureSpec, heightMeasureSpec);
 
         //记录如果是wrap_content是设置的宽和高
-        int width ;
+        int width;
         int height;
 
         View childView = getChildAt(0);
@@ -231,7 +248,7 @@ public class BannerView extends RelativeLayout {
         int cHeight = childView.getMeasuredHeight();
         MarginLayoutParams cParams = (MarginLayoutParams) childView.getLayoutParams();
         //设置位置
-        cParams.setMargins(0,0,0,0);
+        cParams.setMargins(0, 0, 0, 0);
 
         /*
          * 如果是wrap_content设置为我们计算的值
@@ -246,7 +263,7 @@ public class BannerView extends RelativeLayout {
         if (heightMode == MeasureSpec.EXACTLY) {
             height = cHeight;
         } else {
-            height = LibUtils.dip2px(getContext(),200f);
+            height = LibUtils.dip2px(getContext(), 200f);
         }
         setMeasuredDimension(width, height);
     }
@@ -257,8 +274,10 @@ public class BannerView extends RelativeLayout {
      * https://github.com/yangchong211
      */
     private TimeTaskHandler mHandler = new TimeTaskHandler(this);
+
     private final static class TimeTaskHandler extends Handler {
         private WeakReference<BannerView> mRollPagerView;
+
         TimeTaskHandler(BannerView rollPagerView) {
             this.mRollPagerView = new WeakReference<>(rollPagerView);
         }
@@ -267,16 +286,16 @@ public class BannerView extends RelativeLayout {
         public void handleMessage(Message msg) {
             BannerView rollPagerView = mRollPagerView.get();
             //注意这个地方需要添加非空判断
-            if(rollPagerView!=null){
-                int cur = rollPagerView.getViewPager().getCurrentItem()+1;
+            if (rollPagerView != null) {
+                int cur = rollPagerView.getViewPager().getCurrentItem() + 1;
                 //如果cur大于或等于轮播图数量，那么播放到最后一张后时，接着轮播便是索引为0的图片
-                if(cur>=rollPagerView.mAdapter.getCount()){
-                    cur=0;
+                if (cur >= rollPagerView.mAdapter.getCount()) {
+                    cur = 0;
                 }
                 rollPagerView.getViewPager().setCurrentItem(cur);
                 rollPagerView.mHintViewDelegate.setCurrentPosition(cur, (BaseHintView) rollPagerView.mHintView);
                 //假如说轮播图只有一张，那么就停止轮播
-                if (rollPagerView.mAdapter.getCount()<=1){
+                if (rollPagerView.mAdapter.getCount() <= 1) {
                     rollPagerView.stopPlay();
                 }
             }
@@ -286,6 +305,7 @@ public class BannerView extends RelativeLayout {
 
     private static class WeakTimerTask extends TimerTask {
         private WeakReference<BannerView> mRollPagerView;
+
         WeakTimerTask(BannerView mRollPagerView) {
             this.mRollPagerView = new WeakReference<>(mRollPagerView);
         }
@@ -293,97 +313,104 @@ public class BannerView extends RelativeLayout {
         @Override
         public void run() {
             BannerView rollPagerView = mRollPagerView.get();
-            if (rollPagerView!=null){
-                if(rollPagerView.isShown() && System.currentTimeMillis()-rollPagerView
-                        .mRecentTouchTime>rollPagerView.delay){
+            if (rollPagerView != null) {
+                if (rollPagerView.isShown() && System.currentTimeMillis() - rollPagerView
+                        .mRecentTouchTime > rollPagerView.delay) {
                     rollPagerView.mHandler.sendEmptyMessage(0);
                 }
-            }else{
+            } else {
                 cancel();
             }
         }
     }
 
 
-	/**
-	 * 开始播放
-	 * 仅当view正在显示 且 触摸等待时间过后 播放
-	 */
-	private void startPlay(){
-		if(delay<=0||mAdapter==null||mAdapter.getCount()<=1){
-			return;
-		}
-		if (timer!=null){
-			timer.cancel();
-		}
-		timer = new Timer();
-		//用一个timer定时设置当前项为下一项
-		timer.schedule(new WeakTimerTask(this), delay, delay);
-	}
+    /**
+     * 开始播放
+     * 仅当view正在显示 且 触摸等待时间过后 播放
+     */
+    private void startPlay() {
+        if (delay <= 0 || mAdapter == null || mAdapter.getCount() <= 1) {
+            return;
+        }
+//		if (timer!=null){
+//			timer.cancel();
+//		}
+//		timer = new Timer();
+//		//用一个timer定时设置当前项为下一项
+//		timer.schedule(new WeakTimerTask(this), delay, delay);
+
+        if (executorService != null) {
+            executorService.shutdown();
+        }
+        executorService = new ScheduledThreadPoolExecutor(1);
+        executorService.scheduleWithFixedDelay(new WeakTimerTask(this), delay, delay, TimeUnit.MILLISECONDS);
+    }
 
 
     /**
      * 停止轮播
      */
-    private void stopPlay(){
-        if (timer!=null){
-            timer.cancel();
-            timer = null;
+    private void stopPlay() {
+        if (executorService != null) {
+            executorService.shutdown();
+            executorService = null;
         }
     }
 
 
-    public void setHintViewDelegate(HintViewDelegate delegate){
+    public void setHintViewDelegate(HintViewDelegate delegate) {
         this.mHintViewDelegate = delegate;
     }
 
 
     /**
      * 初始化轮播图指示器
-     * @param hintView          hintView
+     *
+     * @param hintView hintView
      */
-	private void initHint(BaseHintView hintView){
-		if(mHintView!=null){
-			removeView(mHintView);
-		}
-		if(hintView == null){
-			return;
-		}
-		mHintView = (View) hintView;
-		loadHintView();
-	}
+    private void initHint(BaseHintView hintView) {
+        if (mHintView != null) {
+            removeView(mHintView);
+        }
+        if (hintView == null) {
+            return;
+        }
+        mHintView = (View) hintView;
+        loadHintView();
+    }
 
-	/**
-	 * 加载hintView的容器
-	 */
-	private void loadHintView(){
-		addView(mHintView);
-		mHintView.setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom);
-		LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT,
+    /**
+     * 加载hintView的容器
+     */
+    private void loadHintView() {
+        addView(mHintView);
+        mHintView.setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom);
+        LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-		lp.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-		((View) mHintView).setLayoutParams(lp);
+        lp.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+        ((View) mHintView).setLayoutParams(lp);
 
-		GradientDrawable gd = new GradientDrawable();
-		gd.setColor(color);
-		gd.setAlpha(alpha);
-		mHintView.setBackgroundDrawable(gd);
+        GradientDrawable gd = new GradientDrawable();
+        gd.setColor(color);
+        gd.setAlpha(alpha);
+        mHintView.setBackgroundDrawable(gd);
 
         mHintViewDelegate.initView(mAdapter == null ? 0 : mAdapter.getCount(),
                 gravity, (BaseHintView) mHintView);
-	}
+    }
 
 
-	/**
-	 * 设置viewPager滑动动画持续时间
+    /**
+     * 设置viewPager滑动动画持续时间
      * API>19
-	 */
-	@TargetApi(Build.VERSION_CODES.KITKAT)
-    public void setAnimationDuration(final int during){
-		try {
-			// viewPager平移动画事件
-			Field mField = ViewPager.class.getDeclaredField("mScroller");
-			mField.setAccessible(true);
+     */
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    public void setAnimationDuration(final int during) {
+        try {
+            // viewPager平移动画事件
+            Field mField = ViewPager.class.getDeclaredField("mScroller");
+            mField.setAccessible(true);
             // 动画效果与ViewPager的一致
             Interpolator interpolator = new Interpolator() {
 
@@ -393,7 +420,7 @@ public class BannerView extends RelativeLayout {
                     return t * t * t * t * t + 1.0f;
                 }
             };
-            Scroller mScroller = new Scroller(getContext(),interpolator){
+            Scroller mScroller = new Scroller(getContext(), interpolator) {
 
                 @Override
                 public void startScroll(int startX, int startY, int dx, int dy, int duration) {
@@ -406,22 +433,22 @@ public class BannerView extends RelativeLayout {
                     super.startScroll(startX, startY, dx, dy, duration);
                 }
 
-				@Override
-				public void startScroll(int startX, int startY, int dx, int dy) {
-					super.startScroll(startX, startY, dx, dy,during);
-				}
-			};
-			mField.set(mViewPager, mScroller);
-		} catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
-			e.printStackTrace();
-		}
+                @Override
+                public void startScroll(int startX, int startY, int dx, int dy) {
+                    super.startScroll(startX, startY, dx, dy, during);
+                }
+            };
+            mField.set(mViewPager, mScroller);
+        } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
      * 停止轮播
      * 在onPause中调用
      */
-    public void pause(){
+    public void pause() {
         stopPlay();
     }
 
@@ -429,30 +456,30 @@ public class BannerView extends RelativeLayout {
      * 开始轮播
      * 在onResume中调用
      */
-    public void resume(){
+    public void resume() {
         startPlay();
     }
 
     /**
      * 判断轮播是否进行
      */
-    public boolean isPlaying(){
-        return timer!=null;
+    public boolean isPlaying() {
+        return executorService != null;
     }
 
-	/**
-	 * 取真正的Viewpager
-	 */
-	public ViewPager getViewPager() {
-		return mViewPager;
-	}
+    /**
+     * 取真正的Viewpager
+     */
+    public ViewPager getViewPager() {
+        return mViewPager;
+    }
 
-	/**
-	 * 设置Adapter
-	 */
-	public void setAdapter(PagerAdapter adapter){
-		adapter.registerDataSetObserver(new PagerObserver());
-		mViewPager.setAdapter(adapter);
+    /**
+     * 设置Adapter
+     */
+    public void setAdapter(PagerAdapter adapter) {
+        adapter.registerDataSetObserver(new PagerObserver());
+        mViewPager.setAdapter(adapter);
         mViewPager.addOnPageChangeListener(new OnPageChangeListener() {
             @Override
             public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
@@ -460,51 +487,52 @@ public class BannerView extends RelativeLayout {
 
             @Override
             public void onPageSelected(int position) {
-                if(position>=0){
+                if (position >= 0) {
                     mHintViewDelegate.setCurrentPosition(position, (BaseHintView) mHintView);
-                    if(mOnPageListener!=null){
+                    if (mOnPageListener != null) {
                         mOnPageListener.onPageChange(position);
                     }
                 }
             }
 
             @Override
-            public void onPageScrollStateChanged(int state) {}
+            public void onPageScrollStateChanged(int state) {
+            }
         });
-		mAdapter = adapter;
-		dataSetChanged();
+        mAdapter = adapter;
+        dataSetChanged();
     }
 
-	/**
-	 * 用来实现adapter的notifyDataSetChanged通知HintView变化
-	 */
-	private class PagerObserver extends DataSetObserver {
-		@Override
-		public void onChanged() {
-			dataSetChanged();
-		}
+    /**
+     * 用来实现adapter的notifyDataSetChanged通知HintView变化
+     */
+    private class PagerObserver extends DataSetObserver {
+        @Override
+        public void onChanged() {
+            dataSetChanged();
+        }
 
-		@Override
-		public void onInvalidated() {
-			dataSetChanged();
-		}
-	}
+        @Override
+        public void onInvalidated() {
+            dataSetChanged();
+        }
+    }
 
-	private void dataSetChanged(){
-		if(mHintView!=null) {
-			mHintViewDelegate.initView(mAdapter.getCount(), gravity, (BaseHintView) mHintView);
-			mHintViewDelegate.setCurrentPosition(mViewPager.getCurrentItem(), (BaseHintView) mHintView);
-		}
+    private void dataSetChanged() {
+        if (mHintView != null) {
+            mHintViewDelegate.initView(mAdapter.getCount(), gravity, (BaseHintView) mHintView);
+            mHintViewDelegate.setCurrentPosition(mViewPager.getCurrentItem(), (BaseHintView) mHintView);
+        }
         startPlay();
     }
 
 
-	/**
-	 * 为了实现触摸时和过后一定时间内不滑动,这里拦截
-	 */
+    /**
+     * 为了实现触摸时和过后一定时间内不滑动,这里拦截
+     */
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-		mRecentTouchTime = System.currentTimeMillis();
+        mRecentTouchTime = System.currentTimeMillis();
         mGestureDetector.onTouchEvent(ev);
         /*int action = ev.getAction();
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL
@@ -522,25 +550,27 @@ public class BannerView extends RelativeLayout {
     /**
      * 设置轮播时间
      */
-    public void setPlayDelay(int delay){
+    public void setPlayDelay(int delay) {
         this.delay = delay;
         startPlay();
     }
 
     /**
      * 设置颜色
-     * @param c             色值
+     *
+     * @param c 色值
      */
-    public void setHintColor(@ColorInt int c){
+    public void setHintColor(@ColorInt int c) {
         this.color = c;
         mHintView.setBackgroundColor(c);
     }
 
     /**
      * 设置位置
-     * @param g             位置
+     *
+     * @param g 位置
      */
-    public void setHintGravity(int g){
+    public void setHintGravity(int g) {
         this.gravity = g;
         //loadHintView();
         mHintViewDelegate.initView(mAdapter == null ? 0 : mAdapter.getCount(),
@@ -549,9 +579,10 @@ public class BannerView extends RelativeLayout {
 
     /**
      * 设置指示器样式
-     * @param mode          样式：文字/红点
+     *
+     * @param mode 样式：文字/红点
      */
-    public void setHintMode(@HintMode int mode){
+    public void setHintMode(@HintMode int mode) {
         hintMode = mode;
     }
 
@@ -559,7 +590,7 @@ public class BannerView extends RelativeLayout {
     /**
      * 设置提示view的位置
      */
-    public void setHintPadding(int left,int top,int right,int bottom){
+    public void setHintPadding(int left, int top, int right, int bottom) {
         paddingLeft = left;
         paddingTop = top;
         paddingRight = right;
@@ -569,11 +600,12 @@ public class BannerView extends RelativeLayout {
 
     /**
      * 设置提示view的透明度
+     *
      * @param alpha 0为全透明  255为实心
      */
-    public void setHintAlpha(int alpha){
+    public void setHintAlpha(int alpha) {
         this.alpha = alpha;
-        initHint((BaseHintView)mHintView);
+        initHint((BaseHintView) mHintView);
     }
 
     /**
@@ -581,46 +613,52 @@ public class BannerView extends RelativeLayout {
      * 只需new一个实现HintView的View传进来
      * 会自动将你的view添加到本View里面。重新设置LayoutParams。
      */
-    public void setHintView(BaseHintView hintView){
+    public void setHintView(BaseHintView hintView) {
         if (mHintView != null) {
             removeView(mHintView);
         }
         this.mHintView = (View) hintView;
-        if (hintView!=null){
+        if (hintView != null) {
             initHint(hintView);
         }
     }
 
     private OnPageListener mOnPageListener;
+
     public interface OnPageListener {
         /**
          * 滑动监听
-         * @param position          索引
+         *
+         * @param position 索引
          */
         void onPageChange(int position);
 
     }
+
     /**
      * 轮播图滑动事件
      */
-    public void setOnPageListener(OnPageListener listener){
+    public void setOnPageListener(OnPageListener listener) {
         this.mOnPageListener = listener;
     }
 
 
     private OnBannerClickListener mOnItemClickListener;
+
     public interface OnBannerClickListener {
         /**
          * 点击
-         * @param position          索引
+         *
+         * @param position 索引
          */
         void onItemClick(int position);
 
     }
+
     /**
      * 轮播图点击事件
      */
-    public void setOnBannerClickListener(OnBannerClickListener listener){
+    public void setOnBannerClickListener(OnBannerClickListener listener) {
         this.mOnItemClickListener = listener;
     }
 
