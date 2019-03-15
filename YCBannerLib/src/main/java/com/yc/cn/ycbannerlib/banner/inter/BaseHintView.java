@@ -11,8 +11,8 @@ package com.yc.cn.ycbannerlib.banner.inter;
  */
 public interface BaseHintView {
 
-	void initView(int length, int gravity);
+    void initView(int length, int gravity);
 
-	void setCurrent(int current);
+    void setCurrent(int current);
 }
 

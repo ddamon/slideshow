@@ -10,6 +10,7 @@ import android.util.Log;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
+
 import com.yc.cn.ycbannerlib.BuildConfig;
 
 
@@ -106,9 +107,10 @@ public class GalleryLayoutManager extends LinearLayoutManager implements Recycle
 
     /**
      * 该方法作用是启动到适配器位置的平滑滚动，必须重写，否则无法实现滚动
-     * @param recyclerView                  recyclerView
-     * @param state                         state状态
-     * @param position                      position索引
+     *
+     * @param recyclerView recyclerView
+     * @param state        state状态
+     * @param position     position索引
      */
     @Override
     public void smoothScrollToPosition(RecyclerView recyclerView, RecyclerView.State state, int position) {
@@ -406,7 +408,7 @@ public class GalleryLayoutManager extends LinearLayoutManager implements Recycle
                 for (int i = getChildCount() - 1; i >= 0; i--) {
                     child = getChildAt(i);
                     if (getDecoratedTop(child) - dy > bottomEdge) {
-                        logger( "fillWithVertical: removeAndRecycleView:" + getPosition(child));
+                        logger("fillWithVertical: removeAndRecycleView:" + getPosition(child));
                         removeAndRecycleView(child, recycler);
                         mLastVisiblePos--;
                     } else {
@@ -596,7 +598,6 @@ public class GalleryLayoutManager extends LinearLayoutManager implements Recycle
     }
 
 
-
     private int calculateScrollDirectionForPosition(int position) {
         if (getChildCount() == 0) {
             return LAYOUT_START;
@@ -681,6 +682,7 @@ public class GalleryLayoutManager extends LinearLayoutManager implements Recycle
     public void setItemTransformer(ItemTransformer itemTransformer) {
         mItemTransformer = itemTransformer;
     }
+
     public interface ItemTransformer {
         void transformItem(GalleryLayoutManager layoutManager, View item, float fraction);
     }
@@ -688,11 +690,13 @@ public class GalleryLayoutManager extends LinearLayoutManager implements Recycle
     class State {
         SparseArray<Rect> mItemsFrames;
         int mScrollDelta;
+
         State() {
             mItemsFrames = new SparseArray<>();
             mScrollDelta = 0;
         }
     }
+
     private State getState() {
         if (mState == null) {
             mState = new State();
@@ -700,18 +704,18 @@ public class GalleryLayoutManager extends LinearLayoutManager implements Recycle
         return mState;
     }
 
-    static int getPosition(){
-        logger("position-----"+mCurSelectedPosition);
+    static int getPosition() {
+        logger("position-----" + mCurSelectedPosition);
         return mCurSelectedPosition;
     }
 
-    static void setPosition(int position){
+    static void setPosition(int position) {
         mCurSelectedPosition = position;
     }
 
-    private static void logger(String log){
-        if (BuildConfig.DEBUG){
-            Log.e(TAG,log);
+    private static void logger(String log) {
+        if (BuildConfig.DEBUG) {
+            Log.e(TAG, log);
         }
     }
 

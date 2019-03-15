@@ -1,7 +1,6 @@
 package com.yc.cn.ycbannerlib.gallery;
 
 import android.graphics.PointF;
-import android.os.Build;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.LinearSnapHelper;
@@ -28,7 +27,7 @@ public class GalleryLinearSnapHelper extends LinearSnapHelper {
     private RecyclerView mRecyclerView;
     private OrientationHelper mHorizontalHelper;
 
-    public GalleryLinearSnapHelper(@Nullable RecyclerView recyclerView){
+    public GalleryLinearSnapHelper(@Nullable RecyclerView recyclerView) {
         mRecyclerView = recyclerView;
     }
 
@@ -69,9 +68,10 @@ public class GalleryLinearSnapHelper extends LinearSnapHelper {
     /**
      * 提供一个用于对齐的Adapter 目标position,抽象方法，需要子类自己实现
      * 发现滚动时候，会滑动多个item，如果相对item个数做限制，可以在findTargetSnapPosition()方法中处理。
-     * @param layoutManager                 layoutManager
-     * @param velocityX                     velocityX
-     * @param velocityY                     velocityY
+     *
+     * @param layoutManager layoutManager
+     * @param velocityX     velocityX
+     * @param velocityY     velocityY
      * @return
      */
     @Override
@@ -104,7 +104,7 @@ public class GalleryLinearSnapHelper extends LinearSnapHelper {
 
         //在松手之后,列表最多只能滚多一屏的item数
         int deltaThreshold = layoutManager.getWidth() / getHorizontalHelper(layoutManager).getDecoratedMeasurement(currentView);
-        Log.d("GalleryLinearSnapHelper", "---deltaThreshold---"+deltaThreshold+"");
+        Log.d("GalleryLinearSnapHelper", "---deltaThreshold---" + deltaThreshold + "");
         int hDeltaJump;
         if (layoutManager.canScrollHorizontally()) {
             hDeltaJump = estimateNextPositionDiffForFling(layoutManager, getHorizontalHelper(layoutManager), velocityX, 0);
@@ -118,7 +118,7 @@ public class GalleryLinearSnapHelper extends LinearSnapHelper {
             if (vectorForEnd.x < 0) {
                 hDeltaJump = -hDeltaJump;
             }
-            Log.d("GalleryLinearSnapHelper", "+++-hDeltaJump-+++"+hDeltaJump+"");
+            Log.d("GalleryLinearSnapHelper", "+++-hDeltaJump-+++" + hDeltaJump + "");
         } else {
             hDeltaJump = 0;
         }
@@ -126,16 +126,16 @@ public class GalleryLinearSnapHelper extends LinearSnapHelper {
         if (hDeltaJump == 0) {
             return RecyclerView.NO_POSITION;
         }
-        Log.d("GalleryLinearSnapHelper", "---hDeltaJump---"+hDeltaJump+"");
+        Log.d("GalleryLinearSnapHelper", "---hDeltaJump---" + hDeltaJump + "");
         int targetPos = currentPosition + hDeltaJump;
         if (targetPos < 0) {
             targetPos = 0;
         }
-        Log.d("GalleryLinearSnapHelper", "+++targetPos+++"+targetPos+"");
+        Log.d("GalleryLinearSnapHelper", "+++targetPos+++" + targetPos + "");
         if (targetPos >= itemCount) {
             targetPos = itemCount - 1;
         }
-        Log.d("GalleryLinearSnapHelper", "---targetPos---"+targetPos+"");
+        Log.d("GalleryLinearSnapHelper", "---targetPos---" + targetPos + "");
         return targetPos;
     }
 
@@ -186,7 +186,9 @@ public class GalleryLinearSnapHelper extends LinearSnapHelper {
         int start = Math.min(helper.getDecoratedStart(minPosView), helper.getDecoratedStart(maxPosView));
         int end = Math.max(helper.getDecoratedEnd(minPosView), helper.getDecoratedEnd(maxPosView));
         int distance = end - start;
-        if (distance == 0) {return INVALID_DISTANCE;}
+        if (distance == 0) {
+            return INVALID_DISTANCE;
+        }
         return 1f * distance / ((maxPos - minPos) + 1);
     }
 

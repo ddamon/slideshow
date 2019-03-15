@@ -39,7 +39,7 @@ public class FirstActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        if(banner!=null){
+        if (banner != null) {
             //停止轮播
             banner.pause();
         }
@@ -48,7 +48,7 @@ public class FirstActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if(banner!=null){
+        if (banner != null) {
             //开始轮播
             banner.resume();
         }
@@ -78,7 +78,7 @@ public class FirstActivity extends AppCompatActivity {
         banner.setOnBannerClickListener(new BannerView.OnBannerClickListener() {
             @Override
             public void onItemClick(int position) {
-                Toast.makeText(FirstActivity.this,position+"被点击呢",Toast.LENGTH_SHORT).show();
+                Toast.makeText(FirstActivity.this, position + "被点击呢", Toast.LENGTH_SHORT).show();
             }
         });
         //轮播图滑动事件
@@ -98,7 +98,7 @@ public class FirstActivity extends AppCompatActivity {
             view.setScaleType(ImageView.ScaleType.CENTER_CROP);
             view.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             Bitmap bitmap = BitmapFactory.decodeResource(getResources(), imgs[position]);
-            Bitmap bitmap1 = ImageBitmapUtils.compressImage(bitmap, bitmap.getByteCount()/5);
+            Bitmap bitmap1 = ImageBitmapUtils.compressImage(bitmap, bitmap.getByteCount() / 5);
             view.setImageBitmap(bitmap1);
             return view;
         }

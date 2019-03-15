@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import java.util.ArrayList;
 
 
-
 /**
  * <pre>
  *     @author yangchong
@@ -24,51 +23,52 @@ public abstract class AbsStaticPagerAdapter extends PagerAdapter {
 
     private ArrayList<View> mViewList = new ArrayList<>();
 
-	@Override
-	public boolean isViewFromObject(@NonNull View arg0, @NonNull Object arg1) {
-		return arg0==arg1;
-	}
+    @Override
+    public boolean isViewFromObject(@NonNull View arg0, @NonNull Object arg1) {
+        return arg0 == arg1;
+    }
 
-	@Override
-	public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
+    @Override
+    public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
         container.removeView((View) object);
     }
 
-	@Override
-	public void notifyDataSetChanged() {
+    @Override
+    public void notifyDataSetChanged() {
         mViewList.clear();
         super.notifyDataSetChanged();
-	}
+    }
 
-	@Override
-	public int getItemPosition(@NonNull Object object) {
-		return POSITION_NONE;
-	}
-
-	@NonNull
     @Override
-	public Object instantiateItem(@NonNull ViewGroup container, int position) {
-        View itemView = findViewByPosition(container,position);
-        container.addView(itemView);
-        onBind(itemView,position);
-		return itemView;
-	}
+    public int getItemPosition(@NonNull Object object) {
+        return POSITION_NONE;
+    }
 
-    private View findViewByPosition(ViewGroup container, int position){
+    @NonNull
+    @Override
+    public Object instantiateItem(@NonNull ViewGroup container, int position) {
+        View itemView = findViewByPosition(container, position);
+        container.addView(itemView);
+        onBind(itemView, position);
+        return itemView;
+    }
+
+    private View findViewByPosition(ViewGroup container, int position) {
         for (View view : mViewList) {
-            if (((int)view.getTag()) == position&&view.getParent()==null){
+            if (((int) view.getTag()) == position && view.getParent() == null) {
                 return view;
             }
         }
-        View view = getView(container,position);
+        View view = getView(container, position);
         view.setTag(position);
         mViewList.add(view);
         return view;
     }
 
 
-    public void onBind(View view, int position){}
+    public void onBind(View view, int position) {
+    }
 
-	public abstract View getView(ViewGroup container, int position);
+    public abstract View getView(ViewGroup container, int position);
 
 }
