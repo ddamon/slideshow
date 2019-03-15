@@ -12,9 +12,12 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+
 import java.lang.ref.WeakReference;
-import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <pre>
@@ -36,9 +39,9 @@ public class GalleryRecyclerView extends RecyclerView {
      */
     private long mRecentTouchTime;
     /**
-     * timer
+     * executorService
      */
-    private Timer timer;
+    private ScheduledExecutorService executorService;
     /**
      * 轮播图数量
      */
@@ -54,11 +57,11 @@ public class GalleryRecyclerView extends RecyclerView {
     private static final int FLING_MAX_VELOCITY = 8000; // 最大顺时滑动速度
 
     public GalleryRecyclerView(Context context) {
-        this(context,null);
+        this(context, null);
     }
 
     public GalleryRecyclerView(Context context, @Nullable AttributeSet attrs) {
-        this(context, attrs,0);
+        this(context, attrs, 0);
     }
 
     public GalleryRecyclerView(Context context, @Nullable AttributeSet attrs, int defStyle) {
@@ -109,26 +112,26 @@ public class GalleryRecyclerView extends RecyclerView {
      * 开始播放
      * 仅当view正在显示 且 触摸等待时间过后 播放
      */
-    private void startPlay(){
-        if(delay<=0||size<=1){
+    private void startPlay() {
+        if (delay <= 0 || size <= 1) {
             return;
         }
-        if (timer!=null){
-            timer.cancel();
+        if (executorService != null) {
+            executorService.shutdown();
         }
-        timer = new Timer();
+        executorService = new ScheduledThreadPoolExecutor(1);
         //用一个timer定时设置当前项为下一项
-        timer.schedule(new WeakTimerTask(this), delay, delay);
+        executorService.scheduleWithFixedDelay(new WeakTimerTask(this), delay, delay, TimeUnit.MILLISECONDS);
     }
 
 
     /**
      * 停止轮播
      */
-    private void stopPlay(){
-        if (timer!=null){
-            timer.cancel();
-            timer = null;
+    private void stopPlay() {
+        if (executorService != null) {
+            executorService.shutdown();
+            executorService = null;
         }
     }
 
@@ -136,7 +139,7 @@ public class GalleryRecyclerView extends RecyclerView {
      * 停止轮播
      * 在onPause中调用
      */
-    public void onStop(){
+    public void onStop() {
         stopPlay();
     }
 
@@ -144,20 +147,20 @@ public class GalleryRecyclerView extends RecyclerView {
      * 开始轮播
      * 在onResume中调用
      */
-    public void onStart(){
+    public void onStart() {
         startPlay();
     }
 
     /**
      * 判断轮播是否进行
      */
-    public boolean isPlaying(){
-        return timer!=null;
+    public boolean isPlaying() {
+        return executorService != null;
     }
 
-    public void release(){
+    public void release() {
         stopPlay();
-        if (mHandler!=null){
+        if (mHandler != null) {
             mHandler.removeCallbacksAndMessages(null);
             mHandler = null;
         }
@@ -173,6 +176,7 @@ public class GalleryRecyclerView extends RecyclerView {
 
     private final static class TimeTaskHandler extends Handler {
         private WeakReference<GalleryRecyclerView> mGalleryRecyclerView;
+
         TimeTaskHandler(GalleryRecyclerView rollPagerView) {
             this.mGalleryRecyclerView = new WeakReference<>(rollPagerView);
         }
@@ -181,17 +185,17 @@ public class GalleryRecyclerView extends RecyclerView {
         public void handleMessage(Message msg) {
             GalleryRecyclerView recyclerView = mGalleryRecyclerView.get();
             //注意这个地方需要添加非空判断
-            if (recyclerView!=null){
+            if (recyclerView != null) {
                 //Log.e("handleMessage----",curSelectedPosition+"");
                 //如果cur大于或等于轮播图数量，那么播放到最后一张后时，接着轮播便是索引为0的图片
                 //int cur = GalleryLayoutManager.getPosition()+1;
                 int cur = mSelectedPosition++;
                 int currentItem = recyclerView.getCurrentItem();
                 //Log.e("handleMessage----------",cur+"---" + recyclerView.size);
-                Log.e("handleMessage----",cur+""+"----"+currentItem);
+                Log.e("handleMessage----", cur + "" + "----" + currentItem);
                 recyclerView.smoothScrollToPosition(cur);
                 //假如说轮播图只有一张，那么就停止轮播
-                if (recyclerView.size<=1){
+                if (recyclerView.size <= 1) {
                     recyclerView.stopPlay();
                 }
             }
@@ -201,6 +205,7 @@ public class GalleryRecyclerView extends RecyclerView {
 
     private static class WeakTimerTask extends TimerTask {
         private WeakReference<GalleryRecyclerView> mGalleryRecyclerView;
+
         WeakTimerTask(GalleryRecyclerView recyclerView) {
             this.mGalleryRecyclerView = new WeakReference<>(recyclerView);
         }
@@ -208,12 +213,12 @@ public class GalleryRecyclerView extends RecyclerView {
         @Override
         public void run() {
             GalleryRecyclerView recyclerView = mGalleryRecyclerView.get();
-            if (recyclerView!=null){
-                if(recyclerView.isShown() && System.currentTimeMillis()-
-                        recyclerView.mRecentTouchTime>recyclerView.delay){
+            if (recyclerView != null) {
+                if (recyclerView.isShown() && System.currentTimeMillis() -
+                        recyclerView.mRecentTouchTime > recyclerView.delay) {
                     recyclerView.mHandler.sendEmptyMessage(0);
                 }
-            }else{
+            } else {
                 cancel();
             }
         }
@@ -231,8 +236,8 @@ public class GalleryRecyclerView extends RecyclerView {
                 || action == MotionEvent.ACTION_OUTSIDE) {
             startPlay();
         } else if (action == MotionEvent.ACTION_DOWN) {
-            mSelectedPosition = getCurrentItem()+2;
-            Log.e("handleMessage----","----"+mSelectedPosition);
+            mSelectedPosition = getCurrentItem() + 2;
+            Log.e("handleMessage----", "----" + mSelectedPosition);
             stopPlay();
         }
         return super.dispatchTouchEvent(ev);
@@ -277,7 +282,7 @@ public class GalleryRecyclerView extends RecyclerView {
         return this;
     }
 
-    public GalleryRecyclerView setSelectedPosition(int position){
+    public GalleryRecyclerView setSelectedPosition(int position) {
         mSelectedPosition = position;
         return this;
     }
@@ -292,7 +297,7 @@ public class GalleryRecyclerView extends RecyclerView {
      * 注意要点：recyclerView轮播要是无限轮播，必须设置两点
      * 第一处是getItemCount() 返回的是Integer.MAX_VALUE。这是因为广告轮播图是无限轮播，getItemCount()
      * 返回的是Adapter中的总项目数，这样才能使RecyclerView能一直滚动。
-     *
+     * <p>
      * 第二处是onBindViewHolder()中的 position%list.size() ，表示position对图片列表list取余，
      * 这样list.get(position%list.size())才能按顺序循环展示图片。
      */
@@ -305,7 +310,7 @@ public class GalleryRecyclerView extends RecyclerView {
         //attach，绑定recyclerView，并且设置默认选中索引的位置
         manager.attach(mSelectedPosition);
         //设置缩放比例因子，在0到1.0之间即可
-        manager.setItemTransformer(new GalleryScaleTransformer( 0.2f,30));
+        manager.setItemTransformer(new GalleryScaleTransformer(0.2f, 30));
         setLayoutManager(manager);
         mSnapHelper = new GalleryLinearSnapHelper(this);
         mSnapHelper.attachToRecyclerView(this);
@@ -315,14 +320,14 @@ public class GalleryRecyclerView extends RecyclerView {
 
     public int getCurrentItem() {
         RecyclerView.LayoutManager layoutManager = this.getLayoutManager();
-        if (mSnapHelper!=null){
+        if (mSnapHelper != null) {
             View snapView = mSnapHelper.findSnapView(layoutManager);
             if (snapView != null) {
                 return layoutManager.getPosition(snapView);
             } else {
                 return mSelectedPosition;
             }
-        }else {
+        } else {
             return mSelectedPosition;
         }
     }
@@ -373,6 +378,7 @@ public class GalleryRecyclerView extends RecyclerView {
     }
 
     private OnItemSelectedListener mOnItemSelectedListener;
+
     public interface OnItemSelectedListener {
         void onItemSelected(RecyclerView recyclerView, View item, int position);
     }

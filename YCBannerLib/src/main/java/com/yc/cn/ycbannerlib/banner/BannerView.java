@@ -333,13 +333,6 @@ public class BannerView extends RelativeLayout {
         if (delay <= 0 || mAdapter == null || mAdapter.getCount() <= 1) {
             return;
         }
-//		if (timer!=null){
-//			timer.cancel();
-//		}
-//		timer = new Timer();
-//		//用一个timer定时设置当前项为下一项
-//		timer.schedule(new WeakTimerTask(this), delay, delay);
-
         if (executorService != null) {
             executorService.shutdown();
         }

@@ -30,7 +30,7 @@ public class ScrollPageHelper extends PagerSnapHelper {
     private boolean snapLastItem;
     private boolean isRtlHorizontal;
 
-    public ScrollPageHelper(int gravity, boolean enableSnapLast){
+    public ScrollPageHelper(int gravity, boolean enableSnapLast) {
         this.snapLastItem = enableSnapLast;
         this.gravity = gravity;
     }
